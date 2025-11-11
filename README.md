@@ -40,6 +40,85 @@ You (or any developer) will be able to decide:
 
 ---
 
+## 🧩 Architecture
+
+```
+[ APEX Page (Browser) ]
+    ▲           │ WebSocket (wss://rtm.yourdomain.com)
+    │           │
+    │   RTM – Listener (DA plugin)
+    │           │
+    │     JSON events: { channel, eventName, payload, ... }
+    │
+[ Node.js RTM Server ]
+    ▲   HTTP POST /api/broadcast
+    │
+    │  WEBSOCKET_API.broadcast_item(...)
+    │
+[ Oracle DB (MLE JS) + PL/SQL ]
+    ▲
+[ APEX Plug-ins: RTM – Broadcast (Process / DA) ]
+```
+
+**Key idea:**  
+You define the message contract (channel, event name, payload).  
+Messages can represent per-user, per-room, or per-page communication.
+
+---
+
+## 📁 Repository Structure
+
+```
+apex-rtm-websocket-plugin/
+├─ README.md
+├─ LICENSE
+│
+├─ db/
+│  ├─ 01_rtm_log_table.sql
+│  ├─ 02_rtm_log_api.sql
+│  ├─ 03_websocket_sender_module.sql
+│  ├─ 04_websocket_send_broadcast.sql
+│  ├─ 05_websocket_api.sql
+│  └─ 90_uninstall.sql
+│
+├─ apex-plugins/
+│  ├─ dynamic_action_plugin_rtm_listener_da.sql
+│  ├─ dynamic_action_plugin_rtm_broadcast_da.sql
+│  └─ process_type_plugin_rtm_broadcast_process.sql
+│
+├─ client-js/
+│  ├─ listener.js
+│  └─ broadcast_da.js
+│
+└─ server/
+   ├─ package.json
+   ├─ server.js
+   └─ nginx-rtm.conf.example
+```
+
+---
+
+## ⚙️ Requirements
+
+### Oracle APEX / Database
+- **APEX** 23.x or 24.x
+- **Database** with MLE (Autonomous DB or 23c+)
+- Schema owning:
+  - `RTM_LOG`, `RTM_LOG_API`
+  - `WEBSOCKET_SENDER_MODULE`
+  - `WEBSOCKET_SEND_BROADCAST`
+  - `WEBSOCKET_API`
+
+### Infrastructure
+- Oracle Cloud Infrastructure (OCI)
+- 1 Compute instance (Oracle Linux 8/9)
+- Public IP + DNS A record  
+  Example:  
+  `rtm.yourdomain.com → <public IP>`
+
+---
+
+
 ## ⚙️ PART 1 – Oracle Cloud Compute & RTM Server
 
 ### 1. Create the compute instance (OCI console)
