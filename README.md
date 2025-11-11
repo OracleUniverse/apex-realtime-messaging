@@ -750,7 +750,7 @@ sudo systemctl reload nginx
 
 ## 💖 Support the Project
 
-If you find **Tree Select Plugin for Oracle APEX** helpful in your applications,  
+If you find **real-time messaging Plugin for Oracle APEX** helpful in your applications,  
 you can support its continued development and future enhancements.
 
 Your support helps keep this plugin open, documented, and frequently updated.
