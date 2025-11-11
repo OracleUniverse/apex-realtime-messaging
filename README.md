@@ -234,7 +234,7 @@ This configures HTTPS for the default Nginx vhost.
 
 ---
 
-### 4. Create the RTM Node server (manual, no git)
+### 4. Create the RTM Node server
 
 Now we manually build the Node server.
 
@@ -443,7 +443,7 @@ You should see the health message from the Node app.
 
 ---
 
-### 8. Run RTM server as a service (optional but recommended)
+### 6. Run RTM server as a service (optional but recommended)
 
 You can use PM2 or systemd. Example with PM2:
 
@@ -463,7 +463,7 @@ pm2 logs rtm-server --lines 50
 
 ---
 
-## 🗃️ 9. Install DB Objects
+## 🗃️ PART 2 –  Install DB Objects
 
 Connect to your DB as the schema owner (e.g. via SQL*Plus, SQLcl, or SQL Developer):
 
@@ -475,7 +475,7 @@ Connect to your DB as the schema owner (e.g. via SQL*Plus, SQLcl, or SQL Develop
 @db/05_websocket_api.sql
 ```
 
-### 9.1 MLE and network access
+### 1. MLE and network access
 
 Ensure your DB supports MLE (Autonomous Database or 23c+).
 
@@ -488,7 +488,7 @@ Allow outbound HTTPS to `rtm.yourdomain.com`:
 
 ---
 
-## 🔌 10. Import APEX Plug-ins
+### 2. Import APEX Plug-ins
 
 In APEX (**SQL Workshop → SQL Commands**), run:
 
@@ -506,9 +506,9 @@ After that, in **Shared Components → Plug-ins**, you should see:
 
 ---
 
-## 🧠 11. How the Plug-ins Work (Concept)
+#### How the Plug-ins Work (Concept)
 
-### 11.1 `WEBSOCKET_API.broadcast_item`
+##### `WEBSOCKET_API.broadcast_item`
 
 The DB API:
 
@@ -531,7 +531,7 @@ internally calls MLE JavaScript (`WEBSOCKET_SENDER_MODULE`) which:
 
 ---
 
-### 11.2 RTM – Broadcast (Process)
+#### 2.1 RTM – Broadcast (Process)
 
 - PL/SQL process plug-in.
 - Typically runs after page processing/commit.
@@ -546,7 +546,7 @@ Use this when:
 
 ---
 
-### 11.3 RTM – Broadcast (Dynamic Action)
+#### 2.2 RTM – Broadcast (Dynamic Action)
 
 - DA plug-in.
 - Runs on client events (click, change, timer, etc.).
@@ -559,7 +559,7 @@ Use this when:
 
 ---
 
-### 11.4 RTM – Listener (Dynamic Action)
+#### 2.3 RTM – Listener (Dynamic Action)
 
 - DA plug-in.
 - JS (`listener.js`) opens a WebSocket connection to the base URL (e.g. `wss://rtm.yourdomain.com`).
@@ -573,7 +573,7 @@ Use this when:
 
 ---
 
-## 📡 12. End-to-End Example: “Hello” Broadcast
+## 📡 PART 3 – End-to-End Example: “Hello” Broadcast
 
 We’ll create one page where:
 
@@ -581,7 +581,7 @@ We’ll create one page where:
 - A button sends the content of `P10_MESSAGE` to everyone on that channel.
 - `RTM_LOG` records the events.
 
-### 12.1 Page structure
+### 1. Page structure
 
 On Page 10:
 
@@ -589,7 +589,7 @@ On Page 10:
 - Region to display logs (optional).
 - Button: `SEND_HELLO`.
 
-### 12.2 Listener DA
+### 2. Listener DA
 
 Create a Dynamic Action: **RTM Listener – Test**
 
@@ -606,7 +606,7 @@ Attributes:
 
 This will connect to the server as the page loads and listen for messages on `channel = test`, `eventName = ping`.
 
-### 12.3 DA Broadcast on button
+### 3. DA Broadcast on button
 
 Create DA: **Broadcast Hello**
 
@@ -650,7 +650,7 @@ apex.message.showPageSuccess("Received: " + (msg.payload && msg.payload.value));
 
 ---
 
-## 🧩 13. Advanced Scenarios (Ideas)
+## 🧩 PART 4 – Advanced Scenarios (Ideas)
 
 Because the plug-ins are generic, you can model many patterns just by choosing `channel` / `event` and `payload`:
 
@@ -687,7 +687,7 @@ Because the plug-ins are generic, you can model many patterns just by choosing `
 
 ---
 
-## 🧱 14. Generic Use & Flexibility
+## 🧱 PART 5 – Generic Use & Flexibility
 
 Why this is handy for real projects:
 
@@ -719,7 +719,7 @@ Easy to replicate into another environment or into a customer’s infrastructure
 
 ---
 
-## 🗑️ 15. Uninstall
+## 🗑️ PART 6 – Uninstall
 
 To uninstall DB parts:
 
@@ -764,7 +764,7 @@ Your support helps keep this plugin open, documented, and frequently updated.
 - 💬 **Chat on WhatsApp:** <https://wa.me/962777437216>
 
 Or visit the project page:  
-🌐 [oracleuniverse.cloud](https://oracleuniverse.cloud)
+🌐 [oracleapex.cloud](https://oracleapex.cloud)
 
 ---
 
@@ -778,7 +778,7 @@ Free for personal and commercial use — attribution appreciated.
 ## 👨‍💻 Author & Contact
 
 **Mohammad Alquran**  
-🌐 Website: [oracleuniverse.cloud](https://oracleuniverse.cloud)  
+🌐 Website: [oracleapex.cloud](https://oracleapex.cloud)  
 💌 Email: [moh.alquraan@gmail.com](mailto:moh.alquraan@gmail.com)  
 💬 WhatsApp: <https://wa.me/962777437216>
 
