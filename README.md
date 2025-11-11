@@ -748,6 +748,37 @@ sudo systemctl reload nginx
 
 ---
 
-## 📄 16. License
+## 💖 Support the Project
 
-Add your chosen OSS license in `LICENSE` (MIT / Apache-2.0, etc.) and mention it here.
+If you find **Tree Select Plugin for Oracle APEX** helpful in your applications,  
+you can support its continued development and future enhancements.
+
+Your support helps keep this plugin open, documented, and frequently updated.
+
+**Support options:**
+
+[![Donate](https://img.shields.io/badge/☕_Donate-via_PayPal-blue?logo=paypal)](https://paypal.me/mtmnq)
+[![WhatsApp](https://img.shields.io/badge/Chat_on-WhatsApp-green?logo=whatsapp)](https://wa.me/962777437216)
+
+- ☕ **Donate via PayPal:** <https://paypal.me/mtmnq>  
+- 💬 **Chat on WhatsApp:** <https://wa.me/962777437216>
+
+Or visit the project page:  
+🌐 [oracleuniverse.cloud](https://oracleuniverse.cloud)
+
+---
+
+## 📄 License
+
+Released under the **MIT License**.  
+Free for personal and commercial use — attribution appreciated.
+
+---
+
+## 👨‍💻 Author & Contact
+
+**Mohammad Alquran**  
+🌐 Website: [oracleuniverse.cloud](https://oracleuniverse.cloud)  
+💌 Email: [moh.alquraan@gmail.com](mailto:moh.alquraan@gmail.com)  
+💬 WhatsApp: <https://wa.me/962777437216>
+
