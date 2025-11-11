@@ -1,5 +1,7 @@
 # APEX Real-Time Messaging (RTM) Plug-in Suite
 
+# APEX Real-Time Messaging (RTM) Plug-in Suite
+
 A small, self-hosted **real-time message bus** for Oracle APEX.
 
 It gives you:
@@ -21,164 +23,225 @@ With it, you can:
 
 In other words, this is not “just a notification plug-in”; it is a **generic real-time messaging layer** inside APEX that you can bend any way you like.
 
-We’re going to build a generic real-time messaging layer for APEX:
+---
 
-A small Node.js WebSocket + REST server on an Oracle Linux compute instance.
+## 1. Architecture
 
-A DB-side MLE JS module + PL/SQL API to POST to that server.
+High-level flow:
 
-An APEX Listener DA plug-in to open a WebSocket and receive messages.
+```text
+[ APEX Page (browser) ]
+    ▲          │ WebSocket (wss://rtm.yourdomain.com)
+    │          │
+    │   RTM – Listener (DA plugin)
+    │          │
+    │     JSON events: { channel, eventName, payload, ... }
+    │
+[ Node.js RTM server ]
+    ▲  HTTP POST /api/broadcast
+    │
+    │  WEBSOCKET_API.broadcast_item(...)
+    │
+[ Oracle DB (MLE JS) + PL/SQL ]
+    ▲
+[ APEX plug-ins: RTM – Broadcast (Process / DA) ]
+Key ideas:
 
-A Broadcast Process plug-in and Broadcast DA plug-in to send messages.
+You (the developer) decide the message contract:
 
-You (or any developer) will be able to decide:
+{
+  "channel": "app_100_sales",
+  "eventName": "refresh_sales",
+  "payload": {
+    "itemName": "P10_MESSAGE",
+    "value": "Sales were updated"
+  },
+  "meta": {
+    "user": "ORACLEVERSE",
+    "appId": 100,
+    "pageId": 10
+  }
+}
+Channel and eventName are just strings. You can treat them as:
 
-What goes in the message (JSON shape),
+rooms, groups, tenants, apps, pages, per-user channels, etc.
 
-Which channel that message goes to (user / group / room / page / tenant),
+On the browser side, the Listener:
 
-What happens in APEX when the message arrives (notify, refresh, set item, run DA, etc.).
+filters by channel/event,
 
-PART 1 – Oracle Cloud Compute & RTM server
-1. Create the compute instance (OCI console)
+optionally updates an APEX item from payload,
 
-This is one-time infra by the admin.
+fires a custom APEX event so any DA can react.
 
-In OCI Console → Networking → Virtual Cloud Networks:
+Infrastructure is deliberately small:
 
-Create or use an existing VCN with a public subnet.
+one Node.js app,
 
-In OCI → Compute → Instances → Create instance:
+behind Nginx,
 
-Name: rtm-server (or anything).
+with Let’s Encrypt TLS,
+
+running on an Oracle Linux compute instance.
+
+2. Repository layout
+Recommended structure:
+
+apex-rtm-websocket-plugin/
+├─ README.md
+├─ LICENSE
+│
+├─ db/
+│  ├─ 01_rtm_log_table.sql
+│  ├─ 02_rtm_log_api.sql
+│  ├─ 03_websocket_sender_module.sql
+│  ├─ 04_websocket_send_broadcast.sql
+│  ├─ 05_websocket_api.sql
+│  └─ 90_uninstall.sql
+│
+├─ apex-plugins/
+│  ├─ dynamic_action_plugin_rtm_listener_da.sql
+│  ├─ dynamic_action_plugin_rtm_broadcast_da.sql
+│  └─ process_type_plugin_rtm_broadcast_process.sql
+│
+├─ client-js/
+│  ├─ listener.js
+│  └─ broadcast_da.js
+│
+└─ server/
+   ├─ package.json
+   ├─ server.js
+   └─ nginx-rtm.conf.example
+You already have these SQL and plug-in export files; simply place them in this structure.
+
+3. Requirements
+APEX / Database
+Oracle APEX 23.x or 24.x.
+
+Database with MLE enabled (Autonomous DB or 23c+).
+
+A schema to own:
+
+RTM_LOG, RTM_LOG_API,
+
+WEBSOCKET_SENDER_MODULE,
+
+WEBSOCKET_SEND_BROADCAST,
+
+WEBSOCKET_API.
+
+Infrastructure
+Oracle Cloud Infrastructure (OCI) tenancy.
+
+1 compute instance:
+
+Oracle Linux 8/9 image.
+
+Small shape is enough (e.g. VM.Standard.E2.1.Micro or similar).
+
+Public IP.
+
+DNS A record:
+
+rtm.yourdomain.com → <compute public IP>.
+
+4. Step–by–step: Provision the Compute instance (OCI Console)
+Create a VCN (if you don’t already have one)
+
+Networking → Virtual Cloud Networks → Create VCN.
+
+Include a public subnet.
+
+Create the compute instance
+
+Compute → Instances → Create instance.
+
+Shape: small (e.g. 1 OCPU).
 
 Image: Oracle Linux 9.
 
-Shape: small (e.g. 1 OCPU, 1–2 GB RAM).
-
-Networking:
+Network:
 
 VCN: your VCN.
 
 Subnet: public subnet.
 
-Add your SSH public key for opc.
+Add SSH public key (for opc user).
 
 Launch.
 
-Open ports 80 and 443 in your security list / NSG:
+Open ports 80 and 443
 
-Allow TCP 80 from 0.0.0.0/0.
+Go to your VCN → Security Lists (or Network Security Groups).
 
-Allow TCP 443 from 0.0.0.0/0.
+Edit Ingress Rules for the security list attached to the instance’s subnet:
 
-In your DNS provider:
+Allow TCP port 80 from 0.0.0.0/0.
 
-Create A record:
+Allow TCP port 443 from 0.0.0.0/0.
+
+Point DNS to the instance
+
+On your DNS provider:
+
+Create an A record:
 rtm.yourdomain.com → <public IP of the instance>.
 
-2. Connect and prepare the OS
-
-SSH into the instance:
+5. Step–by–step: Configure the compute instance (Linux)
+SSH to the instance:
 
 ssh -i /path/to/key.pem opc@<public-ip>
-
-2.1 Update system & install tools
+5.1 System updates and base packages
 sudo dnf update -y
 sudo dnf install -y git nginx
+Optional (but recommended): install Node.js 18+ from NodeSource or dnf module:
 
-
-Node.js 18+ is recommended. On Oracle Linux 9:
-
+# Example: Node 18 via dnf module (if available)
 sudo dnf module list nodejs
 sudo dnf module enable nodejs:18 -y
 sudo dnf install -y nodejs
 node -v
 npm -v
-
-2.2 Enable and test Nginx
+5.2 Enable and test Nginx
 sudo systemctl enable --now nginx
 sudo systemctl status nginx
-
-
-If firewalld is running:
+If needed, open firewall (firewalld):
 
 sudo firewall-cmd --permanent --add-service=http
 sudo firewall-cmd --permanent --add-service=https
 sudo firewall-cmd --reload
+From your browser, open http://rtm.yourdomain.com and confirm you see the Nginx welcome page.
 
-
-Test from your browser:
-
-Visit http://rtm.yourdomain.com → you should see the Nginx welcome page.
-
-3. Install TLS certificate (Let’s Encrypt + Certbot)
-
-Enable EPEL and install Certbot:
+5.3 Install Certbot and get TLS certificate
+Enable EPEL (if not already):
 
 sudo dnf install -y dnf-plugins-core
 sudo dnf config-manager --set-enabled ol9_developer_EPEL
 sudo dnf install -y certbot python3-certbot-nginx
-
-
-Obtain a certificate:
+Run Certbot:
 
 sudo certbot --nginx -d rtm.yourdomain.com
-
-
 Enter email.
 
-Accept ToS.
+Accept Terms.
 
-Choose the option to redirect HTTP → HTTPS.
+Choose the option that redirects HTTP → HTTPS.
 
-This configures HTTPS for the default Nginx vhost.
+That will:
 
-4. Create the RTM Node server (manual, no git)
+Obtain a certificate under /etc/letsencrypt/live/rtm.yourdomain.com/.
 
-Now we manually build the Node server.
+Update Nginx config to serve HTTPS.
 
-4.1 Create the app directory
-mkdir -p /home/opc/websocket-server
-cd /home/opc/websocket-server
+6. Install the RTM Node server
+On the compute instance, as opc:
 
-4.2 Create package.json
-
-Create the file:
-
-nano package.json
-
-
-Paste:
-
-{
-  "name": "apex-rtm-websocket-server",
-  "version": "1.0.0",
-  "description": "Simple RTM bridge for Oracle APEX (WebSocket + REST)",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.21.0",
-    "ws": "^8.17.0"
-  }
-}
-
-
-Save and exit: Ctrl+O, Enter, Ctrl+X.
-
-Install dependencies:
-
+cd ~
+git clone https://github.com/<your-github-user>/apex-rtm-websocket-plugin.git
+cd apex-rtm-websocket-plugin/server
 npm install
+Check server/server.js – a typical implementation:
 
-4.3 Create server.js
-nano server.js
-
-
-Paste:
-
-// server.js
 const http = require("http");
 const WebSocket = require("ws");
 const express = require("express");
@@ -191,7 +254,7 @@ app.get("/", (req, res) => {
   res.send("RTM WebSocket / REST bridge is running");
 });
 
-// Broadcast API that DB/APEX calls
+// Broadcast API that APEX / MLE calls
 app.post("/api/broadcast", (req, res) => {
   const { channel, eventName, payload } = req.body || {};
   console.log("POST /api/broadcast", { channel, eventName, payload });
@@ -200,13 +263,8 @@ app.post("/api/broadcast", (req, res) => {
     return res.status(400).json({ ok: false, message: "channel is required" });
   }
 
-  const msg = JSON.stringify({
-    channel,
-    eventName,
-    payload
-  });
+  const msg = JSON.stringify({ channel, eventName, payload });
 
-  // Send to all connected WS clients
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(msg);
@@ -219,49 +277,32 @@ app.post("/api/broadcast", (req, res) => {
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// When a WebSocket client connects
 wss.on("connection", (ws) => {
   console.log("WebSocket client connected");
-
-  ws.on("message", data => {
-    console.log("WS message:", data.toString());
-  });
-
-  ws.on("close", () => {
-    console.log("WebSocket client disconnected");
-  });
+  ws.on("message", data => console.log("WS message:", data.toString()));
+  ws.on("close", () => console.log("WebSocket client disconnected"));
 });
 
-// Internal HTTP port (Nginx will proxy HTTPS → this)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`RTM server listening on http://localhost:${PORT}`);
 });
+Run it in the foreground to test:
 
-
-Save and exit.
-
-4.4 Test the RTM server locally
-cd /home/opc/websocket-server
 node server.js
 # You should see:
 # RTM server listening on http://localhost:3000
-
-
-Open a second SSH session and test:
+Test from the VM:
 
 curl http://localhost:3000/
-# → RTM WebSocket / REST bridge is running
+# → "RTM WebSocket / REST bridge is running"
+Stop it with Ctrl+C after testing; we’ll run it as a service or via PM2 later.
 
+7. Configure Nginx as reverse proxy for RTM
+Create /etc/nginx/conf.d/rtm.conf:
 
-Stop the Node process with Ctrl+C when done.
-
-5. Configure Nginx to reverse proxy to Node
-5.1 Create a dedicated vhost config
 sudo nano /etc/nginx/conf.d/rtm.conf
-
-
-Paste:
+Example content:
 
 # Redirect HTTP → HTTPS
 server {
@@ -295,28 +336,15 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
-
-
 Test and reload:
 
 sudo nginx -t
 sudo systemctl reload nginx
+Now your RTM server will be reachable at:
 
-5.2 Run the Node server in the background (simple way)
+https://rtm.yourdomain.com/ (health endpoint),
 
-You can later move to PM2/systemd. For now, a simple approach:
-
-cd /home/opc/websocket-server
-nohup node server.js > rtm.log 2>&1 &
-
-
-Check:
-
-ps aux | grep server.js
-curl https://rtm.yourdomain.com/
-
-
-You should see the health message from the Node app.
+WebSocket: wss://rtm.yourdomain.com/.
 
 8. Run RTM server as a service (optional but recommended)
 You can use PM2 or systemd. Example with PM2:
@@ -608,4 +636,5 @@ sudo rm /etc/nginx/conf.d/rtm.conf
 sudo systemctl reload nginx
 16. License
 Add your chosen OSS license in LICENSE (MIT / Apache-2.0, etc.) and mention it here.
+
 
