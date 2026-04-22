@@ -1,0 +1,36 @@
+{
+  "name" : "APEX realtime messaging",
+  "version" : "1.0",
+  "description" : "A small, self-hosted real-time message bus for Oracle APEX.",
+  "keywords" : ["RTM", "Listener", "Broadcast", "WEBSOCKET", "apex"],
+  "homepage" : "https://github.com/OracleUniverse/apex-realtime-messaging",
+  "bugs" : {
+    "url" : "https://github.com/OracleUniverse/apex-realtime-messaging/issues",
+    "email" : "moh.alquraan@gmail.com"
+  },
+  "license" : "MIT",
+  "commercial" : "No",
+  "author" : {
+    "name" : "Mohammad Al-Quraan",
+    "email" : "moh.alquraan@gmail.com",
+    "url" : "https://oracleuniverse.cloud/"
+  },
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/OracleUniverse/apex-realtime-messaging.git"
+  },
+ "oracle" : {
+    "versions" : ["23.0.0.0", "21.0.0.0"],
+    "apex" : {
+      "versions" : ["24.2.10"],
+      "plugin" : {
+        "internalName" : "Real-Time-Messaging",
+        "type" : "Dynamic Action",
+        "demo" : "https://oracleuniverse.cloud",
+        "previewImage" : "https://github.com/OracleUniverse/apex-realtime-messaging/main/Preview.gif"
+      }
+    }
+  }
+
+}
+
