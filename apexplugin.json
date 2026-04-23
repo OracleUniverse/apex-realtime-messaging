@@ -27,7 +27,7 @@
         "internalName" : "Real-Time-Messaging",
         "type" : "Dynamic Action",
         "demo" : "https://g415fb1dbe9e5de-oracleuniverse.adb.ap-sydney-1.oraclecloudapps.com/ords/r/oracleverse/real-time-messaging-plug-in",
-        "previewImage" : "https://github.com/OracleUniverse/apex-realtime-messaging/blob/main/Preview.gif"
+        "previewImage" : "https://raw.githubusercontent.com/OracleUniverse/apex-realtime-messaging/blob/main/Preview.gif"
       }
     }
   }
